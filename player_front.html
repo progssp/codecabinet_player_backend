@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <video autoplay="false" muted id="vid" style="width:100%;" controls>
+        
+    </video>
+
+
+    <script>
+
+        var buffered_bytes = 0;
+        var local_buffer = 1048576;//2097152;
+        var total_content_length = 0;
+        var vid_title = "3237678acea97f442052798c3181bcba2878fbc0_new.webm";
+        var req_url = '/player_backend/Requester.php?call_func=file_real_stream';
+
+        var duration = 0;
+        var delta = 0;
+
+        
+        console.log(`start : ${buffered_bytes}`);
+        console.log(`local buffer : ${local_buffer}`);
+
+        var vid_blob = null;
+
+        async function loadSteam(){
+            var vidElement = document.getElementById('vid');
+            var mediaSource = new MediaSource();
+            vidElement.src = URL.createObjectURL(mediaSource);
+            // var mime = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+            // var mime = 'video/mp4; codecs="avc1.4d401f, mp4a.40.2"';
+            var mime = 'video/webm; codecs="vp9,opus"';
+            // var sourceBuffer = null;
+
+
+            var response = await fetch(req_url,{
+                headers: {
+                    'Range': 'bytes='+buffered_bytes+"-"+local_buffer,
+                    'vid_title': vid_title
+                    // 'Range': 'bytes=1048577-2097152'
+                }
+            });
+            vid_blob = await response.blob();
+            // vidElement.src = URL.createObjectURL(vid_blob);
+            var vid_buff = await vid_blob.arrayBuffer();
+            total_content_length = await response.headers.get('content-range');
+            total_content_length = total_content_length.substr((total_content_length.indexOf('/')+1),total_content_length.length);
+            console.log(`total length : ${total_content_length}`);
+
+            
+            
+            
+          
+            
+            const sourceBuffer = await new Promise((resolve, reject) => {
+                const getSourceBuffer = () => {
+                    try {
+                        const sourceBuffer = mediaSource.addSourceBuffer(mime);
+                        sourceBuffer.mode = 'sequence';
+                        // console.log('buffer added');
+                        resolve(sourceBuffer);
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                if (mediaSource.readyState === 'open') {
+                    getSourceBuffer();
+                } 
+                else {
+                    mediaSource.addEventListener('sourceopen', getSourceBuffer);
+                }
+	        });
+
+            console.log(sourceBuffer.updating);
+
+            
+            
+            sourceBuffer.appendBuffer(vid_buff);
+
+            sourceBuffer.addEventListener('updateend', function() {
+                console.log('update end');
+                // console.log(mediaSource.updating);
+                console.log(mediaSource.readyState);
+                //if (!sourceBuffer.updating && mediaSource.readyState === 'open') {
+                    // mediaSource.endOfStream();
+                    console.log('update end & end of stram');
+                    //vidElement.play();
+                //}
+            });
+
+            
+
+            
+
+
+            buffered_bytes = buffered_bytes + local_buffer;
+
+            
+            setTimeout(()=>{
+                var t = setInterval(async ()=>{
+                        if((buffered_bytes+local_buffer) > total_content_length){
+                            clearInterval(t);
+                            console.log('interval end');
+                            console.log(`start : ${parseInt(buffered_bytes+1)}`);
+                            
+                            var response = await fetch(req_url,{
+                                headers: {
+                                    'Range': 'bytes='+(buffered_bytes+1)+"-"+(total_content_length),
+                                    'vid_title': vid_title
+                                    // 'Range': 'bytes=1048577-2097152'
+                                }
+                            });
+                            vid_blob = await response.blob();
+                            // vidElement.src = URL.createObjectURL(vid_blob);
+                            var vid_buff = await vid_blob.arrayBuffer();
+
+                            if(!sourceBuffer.updating){
+                                console.log('not updating');
+                                sourceBuffer.appendBuffer(vid_buff);
+                            }
+
+
+                            
+                            
+                            (buffered_bytes) = (buffered_bytes) + (local_buffer);
+                        }
+                        else {
+                            console.log(`start : ${parseInt(buffered_bytes+1)}`);
+                            
+                            var response = await fetch('http://localhost/player_backend/Requester.php?call_func=file_real_stream',{
+                                headers: {
+                                    'Range': 'bytes='+(buffered_bytes+1)+"-"+(buffered_bytes+local_buffer),
+                                    'vid_title': vid_title
+                                    // 'Range': 'bytes=1048577-2097152'
+                                }
+                            });
+                            vid_blob = await response.blob();
+                            // vidElement.src = URL.createObjectURL(vid_blob);
+                            var vid_buff = await vid_blob.arrayBuffer();
+
+                            if(!sourceBuffer.updating){
+                                console.log('not updating');
+                                sourceBuffer.appendBuffer(vid_buff);
+                            }
+                            (buffered_bytes) = (buffered_bytes) + (local_buffer);
+                        }
+                    },3000);
+            },2000);
+        }   
+
+
+
+        loadSteam();
+
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+This repo is the backend scripting for codecabinet_player's video streaming.
+This repo does not contain videos dir, so for this repo to get started and working, first get the clone and then create 'videos' dir in root dir then check the database credentials and run.
